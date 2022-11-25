@@ -10,15 +10,17 @@ import (
 
 type MazeHost struct {
 	Connection     net.Conn
+	Reader         *bufio.Reader
 	Code           string
 	MazeJson       string
 	PlayerPosition string
 	WebApps        []WebApp
 }
 
-func CreateHost(Connection net.Conn, Code, MazeJson string) MazeHost {
+func CreateHost(Connection net.Conn, Reader *bufio.Reader, Code, MazeJson string) MazeHost {
 	m := MazeHost{
 		Connection: Connection,
+		Reader:     Reader,
 		Code:       Code,
 		MazeJson:   MazeJson,
 	}
@@ -38,7 +40,7 @@ func (m MazeHost) SendMessage(message string) error {
 }
 
 func (m MazeHost) HandleMessages() {
-	buffer, err := bufio.NewReader(m.Connection).ReadBytes('\n')
+	buffer, err := m.Reader.ReadBytes('\n')
 	if err != nil {
 		// Client disconnected
 		err := m.Disconnected()

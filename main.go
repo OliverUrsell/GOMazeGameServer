@@ -41,7 +41,8 @@ func main() {
 }
 
 func handleConnection(conn net.Conn) {
-	buffer, err := bufio.NewReader(conn).ReadBytes('\n')
+	var reader = bufio.NewReader(conn)
+	buffer, err := reader.ReadBytes('\n')
 	if err != nil {
 		fmt.Println("Client left.")
 		conn.Close()
@@ -64,7 +65,7 @@ func handleConnection(conn net.Conn) {
 			return
 		}
 
-		CodeMazeHostMap[Code] = MazeGameServer.CreateHost(conn, Code, MazeJSON)
+		CodeMazeHostMap[Code] = MazeGameServer.CreateHost(conn, reader, Code, MazeJSON)
 		return
 	}
 
@@ -84,7 +85,7 @@ func handleConnection(conn net.Conn) {
 			return
 		}
 
-		mh.AddWebApp(MazeGameServer.CreateWebApp(conn, mh))
+		mh.AddWebApp(MazeGameServer.CreateWebApp(conn, reader, mh))
 
 		return
 	}

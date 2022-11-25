@@ -10,12 +10,14 @@ import (
 
 type WebApp struct {
 	Connection net.Conn
+	Reader     *bufio.Reader
 	MazeHost   MazeHost
 }
 
-func CreateWebApp(Connection net.Conn, Maze MazeHost) WebApp {
+func CreateWebApp(Connection net.Conn, Reader *bufio.Reader, Maze MazeHost) WebApp {
 	return WebApp{
 		Connection: Connection,
+		Reader:     Reader,
 		MazeHost:   Maze,
 	}
 }
@@ -30,7 +32,7 @@ func (m WebApp) SendMessage(message string) error {
 }
 
 func (m WebApp) HandleMessages() {
-	buffer, err := bufio.NewReader(m.Connection).ReadBytes('\n')
+	buffer, err := m.Reader.ReadBytes('\n')
 	if err != nil {
 		// Client disconnected
 		err := m.Disconnected()
