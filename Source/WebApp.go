@@ -1,30 +1,38 @@
 package MazeGameServer
 
 import (
-	"bufio"
 	"errors"
 	"fmt"
+	"github.com/gorilla/websocket"
 	"log"
-	"net"
 )
 
 type WebApp struct {
-	Connection net.Conn
-	Reader     *bufio.Reader
-	MazeHost   MazeHost
+	Connection  *websocket.Conn
+	MessageType int
+	MazeHost    MazeHost
 }
 
-func CreateWebApp(Connection net.Conn, Reader *bufio.Reader, Maze MazeHost) WebApp {
-	return WebApp{
-		Connection: Connection,
-		Reader:     Reader,
-		MazeHost:   Maze,
+func CreateWebApp(Connection *websocket.Conn, MessageType int, Maze MazeHost) (*WebApp, error) {
+	var out = &WebApp{
+		Connection:  Connection,
+		MessageType: MessageType,
+		MazeHost:    Maze,
 	}
+
+	err := out.SendMessage(Maze.MazeJson)
+	if err != nil {
+		return nil, err
+	}
+
+	go out.HandleMessages()
+
+	return out, nil
 }
 
 func (m WebApp) SendMessage(message string) error {
-	_, err := m.Connection.Write([]byte(message))
-	if err != nil {
+
+	if err := m.Connection.WriteMessage(m.MessageType, []byte(message+"\n")); err != nil {
 		return errors.New(fmt.Sprintf("Failed to send message to WebApp: %s", err.Error()))
 	}
 
@@ -32,19 +40,15 @@ func (m WebApp) SendMessage(message string) error {
 }
 
 func (m WebApp) HandleMessages() {
-	buffer, err := m.Reader.ReadBytes('\n')
-	if err != nil {
-		// Client disconnected
-		err := m.Disconnected()
-		if err != nil {
-			fmt.Printf("Failed to disconnect client: %s", err.Error())
-		}
-		return
-	}
+	// read a message
+	_, messageContent, _ := m.Connection.ReadMessage()
 
-	var clientMessage = string(buffer[:len(buffer)-1])
+	// print out that message
+	fmt.Println(string(messageContent))
 
-	log.Println("Client message:", clientMessage)
+	var clientMessage = string(messageContent)
+
+	log.Println("Client message: ", clientMessage)
 
 	m.HandleMessages()
 }

@@ -14,7 +14,7 @@ type MazeHost struct {
 	Code           string
 	MazeJson       string
 	PlayerPosition string
-	WebApps        []WebApp
+	WebApps        []*WebApp
 }
 
 func CreateHost(Connection net.Conn, Reader *bufio.Reader, Code, MazeJson string) MazeHost {
@@ -68,6 +68,8 @@ func (m MazeHost) HandleMessages() {
 }
 
 func (m MazeHost) Disconnected() error {
+	// TODO: Is this actually being called
+	// TODO: Need to destroy this instance and remove it from the CodeMazeHostMap in main.go, possibly with an event paradigm
 	err := m.Connection.Close()
 	if err != nil {
 		return err
@@ -76,7 +78,7 @@ func (m MazeHost) Disconnected() error {
 	return nil
 }
 
-func (m MazeHost) AddWebApp(w WebApp) {
+func (m MazeHost) AddWebApp(w *WebApp) {
 	m.WebApps = append(m.WebApps, w)
 }
 

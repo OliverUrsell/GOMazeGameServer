@@ -4,7 +4,10 @@ import (
 	MazeGameServer "MazeGameServer/Source"
 	"bufio"
 	"fmt"
+	"github.com/gorilla/websocket"
+	"log"
 	"net"
+	"net/http"
 	"os"
 )
 
@@ -17,6 +20,73 @@ const (
 var CodeMazeHostMap map[string]MazeGameServer.MazeHost
 
 func main() {
+	// Start a server for the Unreal Engine mazes
+	go startSocketServer()
+
+	// Start a server for web sockets
+	startWebSocketServer()
+}
+
+func startWebSocketServer() {
+	fmt.Println("Starting WebSocket server on localhost 25567")
+
+	var upgrader = websocket.Upgrader{
+		ReadBufferSize:  1024,
+		WriteBufferSize: 1024,
+		CheckOrigin: func(r *http.Request) bool {
+			return true
+		},
+	}
+
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+
+		wsocket, err := upgrader.Upgrade(w, r, nil)
+		if err != nil {
+			log.Println(err)
+			return
+		}
+		log.Println("Websocket Connected!")
+		listen(wsocket)
+	})
+	http.ListenAndServe(":25567", nil)
+}
+
+func listen(conn *websocket.Conn) {
+	for {
+		// read a message
+		messageType, messageContent, _ := conn.ReadMessage()
+
+		var ClientMessage = string(messageContent)
+
+		// print out that message
+		fmt.Println(ClientMessage)
+
+		// Check for the WebApp JoinGame message
+		if len(ClientMessage) == 14 && ClientMessage[len(ClientMessage)-9:] == "JoinGame\n" {
+			var Code = ClientMessage[:4]
+			fmt.Printf("New Web App has joined with code: %s\n", Code)
+
+			mh, ok := CodeMazeHostMap[Code]
+			if !ok {
+				// There is no host for that code
+				fmt.Println("There was no host for that code")
+				if err := conn.WriteMessage(messageType, []byte("NoMaze\n")); err != nil {
+					fmt.Printf("Failed to send message to WebApp: %s\n", err.Error())
+					return
+				}
+			}
+
+			webapp, err := MazeGameServer.CreateWebApp(conn, messageType, mh)
+			if err != nil {
+
+			}
+
+			mh.AddWebApp(webapp)
+		}
+	}
+}
+
+func startSocketServer() {
 	fmt.Println("Starting " + connType + " server on " + connHost + ":" + connPort)
 	l, err := net.Listen(connType, connHost+":"+connPort)
 	if err != nil {
@@ -66,27 +136,6 @@ func handleConnection(conn net.Conn) {
 		}
 
 		CodeMazeHostMap[Code] = MazeGameServer.CreateHost(conn, reader, Code, MazeJSON)
-		return
-	}
-
-	// Check for the WebApp JoinGame message
-	if len(ClientMessage) == 13 && ClientMessage[len(ClientMessage)-8:] == "JoinGame" {
-		var Code = ClientMessage[:4]
-		fmt.Printf("New Web App has joined with code: %s\n", Code)
-
-		mh, ok := CodeMazeHostMap[Code]
-		if !ok {
-			// There is no host for that code
-			_, err := conn.Write([]byte("NoMaze"))
-			if err != nil {
-				fmt.Printf("Failed to send message to WebApp: %s\n", err.Error())
-			}
-			conn.Close()
-			return
-		}
-
-		mh.AddWebApp(MazeGameServer.CreateWebApp(conn, reader, mh))
-
 		return
 	}
 
