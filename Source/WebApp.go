@@ -41,7 +41,12 @@ func (m WebApp) SendMessage(message string) error {
 
 func (m WebApp) HandleMessages() {
 	// read a message
-	_, messageContent, _ := m.Connection.ReadMessage()
+	_, messageContent, err := m.Connection.ReadMessage()
+	if err != nil {
+		//fmt.Printf(err.Error())
+		m.Disconnected()
+		return
+	}
 
 	// print out that message
 	fmt.Println(string(messageContent))
@@ -54,6 +59,7 @@ func (m WebApp) HandleMessages() {
 }
 
 func (m WebApp) Disconnected() error {
+	fmt.Printf("Disconnect webapp from code: " + m.MazeHost.Code)
 	err := m.Connection.Close()
 	if err != nil {
 		return err
