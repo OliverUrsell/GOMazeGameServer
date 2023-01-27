@@ -10,17 +10,17 @@ import (
 type WebApp struct {
 	Connection  *websocket.Conn
 	MessageType int
-	MazeHost    MazeHost
+	MazeHost    *MazeHost
 }
 
-func CreateWebApp(Connection *websocket.Conn, MessageType int, Maze MazeHost) (*WebApp, error) {
+func CreateWebApp(Connection *websocket.Conn, MessageType int, Maze *MazeHost) (*WebApp, error) {
 	var out = &WebApp{
 		Connection:  Connection,
 		MessageType: MessageType,
 		MazeHost:    Maze,
 	}
 
-	err := out.SendMessage(Maze.MazeJson)
+	err := out.SendMessage("MAZE " + Maze.MazeJson)
 	if err != nil {
 		return nil, err
 	}
@@ -31,7 +31,7 @@ func CreateWebApp(Connection *websocket.Conn, MessageType int, Maze MazeHost) (*
 }
 
 func (m WebApp) SendMessage(message string) error {
-
+	fmt.Printf("Sent Message to client: %s\n", message)
 	if err := m.Connection.WriteMessage(m.MessageType, []byte(message+"\n")); err != nil {
 		return errors.New(fmt.Sprintf("Failed to send message to WebApp: %s", err.Error()))
 	}
@@ -43,7 +43,7 @@ func (m WebApp) HandleMessages() {
 	// read a message
 	_, messageContent, err := m.Connection.ReadMessage()
 	if err != nil {
-		//fmt.Printf(err.Error())
+		fmt.Printf("Handle message stopped: %s\n", err.Error())
 		m.Disconnected()
 		return
 	}
@@ -59,7 +59,7 @@ func (m WebApp) HandleMessages() {
 }
 
 func (m WebApp) Disconnected() error {
-	fmt.Printf("Disconnect webapp from code: " + m.MazeHost.Code)
+	fmt.Printf("Disconnect webapp from code: %s\n", m.MazeHost.Code)
 	err := m.Connection.Close()
 	if err != nil {
 		return err
@@ -68,16 +68,18 @@ func (m WebApp) Disconnected() error {
 	return nil
 }
 
-func (m WebApp) SetPlayerPosition(JSON string) {
+func (m WebApp) SetPlayerPosition(JSON string) error {
 	err := m.SendMessage(fmt.Sprintf("PlayerPosition %s", JSON))
 	if err != nil {
-		fmt.Printf("Error setting player position: %s", err.Error())
+		return err
 	}
+	return nil
 }
 
-func (m WebApp) SetMaze(JSON string) {
+func (m WebApp) SetMaze(JSON string) error {
 	err := m.SendMessage(fmt.Sprintf("Maze %s", JSON))
 	if err != nil {
-		fmt.Printf("Error setting maze: %s", err.Error())
+		return err
 	}
+	return nil
 }

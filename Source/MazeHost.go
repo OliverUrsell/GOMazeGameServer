@@ -17,7 +17,7 @@ type MazeHost struct {
 	WebApps        []*WebApp
 }
 
-func CreateHost(Connection net.Conn, Reader *bufio.Reader, Code, MazeJson string) MazeHost {
+func CreateHost(Connection net.Conn, Reader *bufio.Reader, Code, MazeJson string) *MazeHost {
 	m := MazeHost{
 		Connection: Connection,
 		Reader:     Reader,
@@ -27,10 +27,10 @@ func CreateHost(Connection net.Conn, Reader *bufio.Reader, Code, MazeJson string
 
 	go m.HandleMessages()
 
-	return m
+	return &m
 }
 
-func (m MazeHost) SendMessage(message string) error {
+func (m *MazeHost) SendMessage(message string) error {
 	_, err := m.Connection.Write([]byte(message))
 	if err != nil {
 		return errors.New(fmt.Sprintf("Failed to send message to MazeHost: %s", err.Error()))
@@ -39,7 +39,7 @@ func (m MazeHost) SendMessage(message string) error {
 	return nil
 }
 
-func (m MazeHost) HandleMessages() {
+func (m *MazeHost) HandleMessages() {
 	buffer, err := m.Reader.ReadBytes('\n')
 	if err != nil {
 		// Client disconnected
@@ -67,7 +67,7 @@ func (m MazeHost) HandleMessages() {
 	m.HandleMessages()
 }
 
-func (m MazeHost) Disconnected() error {
+func (m *MazeHost) Disconnected() error {
 	// TODO: Is this actually being called
 	// TODO: Need to destroy this instance and remove it from the CodeMazeHostMap in main.go, possibly with an event paradigm
 	err := m.Connection.Close()
@@ -78,19 +78,28 @@ func (m MazeHost) Disconnected() error {
 	return nil
 }
 
-func (m MazeHost) AddWebApp(w *WebApp) {
+func (m *MazeHost) AddWebApp(w *WebApp) {
 	m.WebApps = append(m.WebApps, w)
 }
 
-func (m MazeHost) SetWebAppsPlayerPosition(JSON string) {
-	for _, app := range m.WebApps {
-		app.SetPlayerPosition(JSON)
+func (m *MazeHost) SetWebAppsPlayerPosition(JSON string) {
+	for i, app := range m.WebApps {
+		err := app.SetPlayerPosition(JSON)
+		if err != nil {
+			fmt.Printf("Error setting player position: %s", err.Error())
+			m.WebApps[i] = m.WebApps[len(m.WebApps)-1]
+			m.WebApps = m.WebApps[:len(m.WebApps)-1]
+		}
 	}
 }
 
-func (m MazeHost) SetMaze(JSON string) {
+func (m *MazeHost) SetMaze(JSON string) {
 	m.MazeJson = JSON[5:]
-	for _, app := range m.WebApps {
-		app.SetMaze(JSON)
+	for i, app := range m.WebApps {
+		err := app.SetMaze(JSON)
+		if err != nil {
+			fmt.Printf("Error setting maze: %s", err.Error())
+			m.WebApps = append(m.WebApps[:i-1], m.WebApps[i:]...)
+		}
 	}
 }

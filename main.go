@@ -17,7 +17,7 @@ const (
 	connType = "tcp"
 )
 
-var CodeMazeHostMap map[string]MazeGameServer.MazeHost
+var CodeMazeHostMap map[string]*MazeGameServer.MazeHost
 
 func main() {
 	// Start a server for the Unreal Engine mazes
@@ -72,13 +72,13 @@ func listen(conn *websocket.Conn) {
 				fmt.Println("There was no host for that code")
 				if err := conn.WriteMessage(messageType, []byte("NoMaze\n")); err != nil {
 					fmt.Printf("Failed to send message to WebApp: %s\n", err.Error())
-					return
 				}
+				return
 			}
 
 			webapp, err := MazeGameServer.CreateWebApp(conn, messageType, mh)
 			if err != nil {
-
+				fmt.Printf("Error creating a web app: %s\n", err.Error())
 			}
 
 			mh.AddWebApp(webapp)
@@ -95,7 +95,7 @@ func startSocketServer() {
 	}
 	defer l.Close()
 
-	CodeMazeHostMap = make(map[string]MazeGameServer.MazeHost)
+	CodeMazeHostMap = make(map[string]*MazeGameServer.MazeHost)
 
 	for {
 		c, err := l.Accept()
