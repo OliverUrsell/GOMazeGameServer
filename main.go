@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	connHost = "localhost"
+	connHost = ""
 	connPort = "25566"
 	connType = "tcp"
 )
@@ -48,7 +48,10 @@ func startWebSocketServer() {
 		log.Println("Websocket Connected!")
 		listen(wsocket)
 	})
-	http.ListenAndServe(":25567", nil)
+	err := http.ListenAndServe(":25567", nil)
+	if err != nil {
+		log.Fatal("Failed to start server: " + err.Error())
+	}
 }
 
 func listen(conn *websocket.Conn) {
