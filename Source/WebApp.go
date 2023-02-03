@@ -68,8 +68,8 @@ func (m WebApp) Disconnected() error {
 	return nil
 }
 
-func (m WebApp) SetPlayerPosition(JSON string) error {
-	err := m.SendMessage(fmt.Sprintf("PlayerPosition %s", JSON))
+func (m WebApp) SetPositions(JSON string) error {
+	err := m.SendMessage(fmt.Sprintf("Positions %s", JSON))
 	if err != nil {
 		return err
 	}
