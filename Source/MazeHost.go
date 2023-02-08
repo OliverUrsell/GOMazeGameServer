@@ -9,20 +9,22 @@ import (
 )
 
 type MazeHost struct {
-	Connection net.Conn
-	Reader     *bufio.Reader
-	Code       string
-	MazeJson   string
-	Positions  string
-	WebApps    []*WebApp
+	Connection                 net.Conn
+	Reader                     *bufio.Reader
+	Code                       string
+	MazeJson                   string
+	Positions                  string
+	WebApps                    []*WebApp
+	MonsterControllerConnected bool
 }
 
 func CreateHost(Connection net.Conn, Reader *bufio.Reader, Code, MazeJson string) *MazeHost {
 	m := MazeHost{
-		Connection: Connection,
-		Reader:     Reader,
-		Code:       Code,
-		MazeJson:   MazeJson,
+		Connection:                 Connection,
+		Reader:                     Reader,
+		Code:                       Code,
+		MazeJson:                   MazeJson,
+		MonsterControllerConnected: false,
 	}
 
 	go m.HandleMessages()
@@ -86,7 +88,7 @@ func (m *MazeHost) SetWebAppsPositions(JSON string) {
 	for i, app := range m.WebApps {
 		err := app.SetPositions(JSON)
 		if err != nil {
-			fmt.Printf("Error setting player position: %s", err.Error())
+			fmt.Printf("Error setting positions: %s", err.Error())
 			m.WebApps[i] = m.WebApps[len(m.WebApps)-1]
 			m.WebApps = m.WebApps[:len(m.WebApps)-1]
 		}

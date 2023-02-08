@@ -1,6 +1,7 @@
 package MazeGameServer
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/gorilla/websocket"
@@ -11,6 +12,7 @@ type WebApp struct {
 	Connection  *websocket.Conn
 	MessageType int
 	MazeHost    *MazeHost
+	IsGuide     bool // If not a guide they're a monster controller
 }
 
 func CreateWebApp(Connection *websocket.Conn, MessageType int, Maze *MazeHost) (*WebApp, error) {
@@ -18,9 +20,31 @@ func CreateWebApp(Connection *websocket.Conn, MessageType int, Maze *MazeHost) (
 		Connection:  Connection,
 		MessageType: MessageType,
 		MazeHost:    Maze,
+		IsGuide:     true,
 	}
 
-	err := out.SendMessage("MAZE " + Maze.MazeJson)
+	// Add whether this player is a guide or monster to the json
+	var mazeJSON map[string]interface{}
+
+	err := json.Unmarshal([]byte(Maze.MazeJson), &mazeJSON)
+	if err != nil {
+		return nil, err
+	}
+
+	if Maze.MonsterControllerConnected {
+		mazeJSON["player_type"] = "guide"
+	} else {
+		mazeJSON["player_type"] = "monster"
+		Maze.MonsterControllerConnected = true
+		out.IsGuide = false
+	}
+
+	jsonBytes, err := json.Marshal(mazeJSON)
+	if err != nil {
+		return nil, err
+	}
+
+	err = out.SendMessage("MAZE " + string(jsonBytes))
 	if err != nil {
 		return nil, err
 	}
@@ -59,10 +83,14 @@ func (m WebApp) HandleMessages() {
 }
 
 func (m WebApp) Disconnected() error {
-	fmt.Printf("Disconnect webapp from code: %s\n", m.MazeHost.Code)
+	fmt.Printf("Disconnected webapp from code: %s\n", m.MazeHost.Code)
 	err := m.Connection.Close()
 	if err != nil {
 		return err
+	}
+
+	if !m.IsGuide {
+		m.MazeHost.MonsterControllerConnected = false
 	}
 
 	return nil
