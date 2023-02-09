@@ -4,8 +4,8 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
-	"log"
 	"net"
+	"time"
 )
 
 type MazeHost struct {
@@ -32,12 +32,41 @@ func CreateHost(Connection net.Conn, Reader *bufio.Reader, Code, MazeJson string
 	return &m
 }
 
-func (m *MazeHost) SendMessage(message string) error {
-	_, err := m.Connection.Write([]byte(message))
-	if err != nil {
-		return errors.New(fmt.Sprintf("Failed to send message to MazeHost: %s", err.Error()))
+func (m *MazeHost) _SendMessageLoop(message []byte) error {
+	attempts := 0
+	for attempts <= 10 {
+		n, err := m.Connection.Write(message)
+		if err != nil {
+			return errors.New(fmt.Sprintf("Failed to send message to MazeHost: %s", err.Error()))
+		}
+
+		if n == len(message) {
+			return nil
+		}
+
+		attempts += 1
+		sleepTime, err := time.ParseDuration("10ms")
+		if err != nil {
+			return err
+		}
+		time.Sleep(sleepTime)
 	}
 
+	return errors.New(fmt.Sprintf("Failed after %s attempts", attempts))
+
+}
+
+func (m *MazeHost) SendMessage(message string) error {
+	//fmt.Println("Sending message to host with code " + m.Code + ": " + message)
+	// Need a message queue, if something fails to send (n is nil or something?) don't dequeue, keep sending, otherwise do dequeue
+	go func() {
+		err := m._SendMessageLoop([]byte(message))
+		if err != nil {
+			fmt.Printf("Failed to send message: " + err.Error())
+		}
+	}()
+
+	//TODO: Fix that we have to return an error here
 	return nil
 }
 
@@ -56,7 +85,7 @@ func (m *MazeHost) HandleMessages() {
 
 	var clientMessage = string(buffer[:len(buffer)-1])
 
-	log.Println("Host ", m.Code, " message:", clientMessage)
+	//log.Println("Host ", m.Code, " message:", clientMessage)
 
 	if len(clientMessage) > 5 && clientMessage[:4] == "Maze" {
 		m.SetMaze(clientMessage[5:])
@@ -104,4 +133,13 @@ func (m *MazeHost) SetMaze(JSON string) {
 			m.WebApps = append(m.WebApps[:i-1], m.WebApps[i:]...)
 		}
 	}
+}
+
+func (m *MazeHost) ChangeMonsterDirection(message string) error {
+	err := m.SendMessage(message)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

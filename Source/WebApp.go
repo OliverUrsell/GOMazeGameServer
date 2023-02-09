@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/gorilla/websocket"
-	"log"
 )
 
 type WebApp struct {
@@ -49,13 +48,11 @@ func CreateWebApp(Connection *websocket.Conn, MessageType int, Maze *MazeHost) (
 		return nil, err
 	}
 
-	go out.HandleMessages()
-
 	return out, nil
 }
 
 func (m WebApp) SendMessage(message string) error {
-	fmt.Printf("Sent Message to client: %s\n", message)
+	//fmt.Printf("Sent Message to client: %s\n", message)
 	if err := m.Connection.WriteMessage(m.MessageType, []byte(message+"\n")); err != nil {
 		return errors.New(fmt.Sprintf("Failed to send message to WebApp: %s", err.Error()))
 	}
@@ -63,24 +60,19 @@ func (m WebApp) SendMessage(message string) error {
 	return nil
 }
 
-func (m WebApp) HandleMessages() {
-	// read a message
-	_, messageContent, err := m.Connection.ReadMessage()
-	if err != nil {
-		fmt.Printf("Handle message stopped: %s\n", err.Error())
-		m.Disconnected()
-		return
-	}
-
-	// print out that message
-	fmt.Println(string(messageContent))
-
-	var clientMessage = string(messageContent)
-
-	log.Println("Client message: ", clientMessage)
-
-	m.HandleMessages()
-}
+//func (m WebApp) HandleMessages(clientMessage string) {
+//
+//	log.Println("Client message: ", clientMessage)
+//
+//	if len(clientMessage) > 17 && clientMessage[:16] == "MonsterDirection" {
+//		fmt.Println("Hello World 1")
+//
+//		err := m.MazeHost.SendMessage(clientMessage)
+//		if err != nil {
+//			return
+//		}
+//	}
+//}
 
 func (m WebApp) Disconnected() error {
 	fmt.Printf("Disconnected webapp from code: %s\n", m.MazeHost.Code)

@@ -9,12 +9,13 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"strings"
 )
 
 const (
 	connHost = "0.0.0.0"
 	connPort = "25566"
-	connType = "tcp"
+	connType = "tcp4"
 )
 
 var CodeMazeHostMap map[string]*MazeGameServer.MazeHost
@@ -85,6 +86,18 @@ func listen(conn *websocket.Conn) {
 			}
 
 			mh.AddWebApp(webapp)
+		} else if len(ClientMessage) > len("1234 MonsterDirection") && strings.HasPrefix(ClientMessage[5:], "MonsterDirection") {
+			// We got a monster direction message
+			code := ClientMessage[:4]
+			maze, ok := CodeMazeHostMap[code]
+			if !ok {
+				fmt.Println("No maze exists with code: " + code)
+			}
+
+			err := maze.ChangeMonsterDirection(ClientMessage)
+			if err != nil {
+				fmt.Println("Failed to set monster direction: " + err.Error())
+			}
 		}
 	}
 }
