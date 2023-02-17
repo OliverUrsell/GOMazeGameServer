@@ -138,20 +138,19 @@ func handleConnection(conn net.Conn) {
 	var ClientMessage = string(buffer[:len(buffer)-1])
 
 	// Check for (StartGame [Code] [MazeNodeJSON]) message from MazeHost
-	if len(ClientMessage) > 15 && ClientMessage[:9] == "StartGame" {
+	if len(ClientMessage) == 14 && ClientMessage[:9] == "StartGame" {
 		var Code = ClientMessage[10:14]
-		var MazeJSON = ClientMessage[15:]
 
 		fmt.Printf("New Maze Host has joined with code: %s\n", Code)
-		fmt.Printf("JSON: %s\n", MazeJSON)
 
 		_, ok := CodeMazeHostMap[Code]
 		if ok {
 			fmt.Println("Maze with code ", Code, " already exists!")
+			conn.Close()
 			return
 		}
 
-		CodeMazeHostMap[Code] = MazeGameServer.CreateHost(conn, reader, Code, MazeJSON)
+		CodeMazeHostMap[Code] = MazeGameServer.CreateHost(conn, reader, Code)
 		return
 	}
 

@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"log"
 	"net"
 	"time"
 )
@@ -18,12 +19,12 @@ type MazeHost struct {
 	MonsterControllerConnected bool
 }
 
-func CreateHost(Connection net.Conn, Reader *bufio.Reader, Code, MazeJson string) *MazeHost {
+func CreateHost(Connection net.Conn, Reader *bufio.Reader, Code string) *MazeHost {
 	m := MazeHost{
 		Connection:                 Connection,
 		Reader:                     Reader,
 		Code:                       Code,
-		MazeJson:                   MazeJson,
+		MazeJson:                   "nomaze",
 		MonsterControllerConnected: false,
 	}
 
@@ -85,14 +86,16 @@ func (m *MazeHost) HandleMessages() {
 
 	var clientMessage = string(buffer[:len(buffer)-1])
 
-	//log.Println("Host ", m.Code, " message:", clientMessage)
+	log.Println("Host ", m.Code, " message:", clientMessage)
 
-	if len(clientMessage) > 5 && clientMessage[:4] == "Maze" {
-		m.SetMaze(clientMessage[5:])
+	if len(clientMessage) > 10 && clientMessage[5:9] == "Maze" {
+		//Code := clientMessage[:4]
+		mazeJSON := clientMessage[10:]
+		m.SetMaze(mazeJSON)
 	}
 
-	if len(clientMessage) > 10 && clientMessage[:9] == "Positions" {
-		m.SetWebAppsPositions(clientMessage[9:])
+	if len(clientMessage) > 13 && clientMessage[5:14] == "Positions" {
+		m.SetWebAppsPositions(clientMessage[15:])
 	}
 
 	m.HandleMessages()
@@ -118,6 +121,10 @@ func (m *MazeHost) SetWebAppsPositions(JSON string) {
 		err := app.SetPositions(JSON)
 		if err != nil {
 			fmt.Printf("Error setting positions: %s", err.Error())
+			err = m.WebApps[i].Disconnected()
+			if err != nil {
+				fmt.Printf("Error disconnecting webapp: %s", err.Error())
+			}
 			m.WebApps[i] = m.WebApps[len(m.WebApps)-1]
 			m.WebApps = m.WebApps[:len(m.WebApps)-1]
 		}
@@ -125,7 +132,7 @@ func (m *MazeHost) SetWebAppsPositions(JSON string) {
 }
 
 func (m *MazeHost) SetMaze(JSON string) {
-	m.MazeJson = JSON[5:]
+	m.MazeJson = JSON
 	for i, app := range m.WebApps {
 		err := app.SetMaze(JSON)
 		if err != nil {

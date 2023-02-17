@@ -19,31 +19,14 @@ func CreateWebApp(Connection *websocket.Conn, MessageType int, Maze *MazeHost) (
 		Connection:  Connection,
 		MessageType: MessageType,
 		MazeHost:    Maze,
-		IsGuide:     true,
+		IsGuide:     Maze.MonsterControllerConnected,
 	}
 
-	// Add whether this player is a guide or monster to the json
-	var mazeJSON map[string]interface{}
-
-	err := json.Unmarshal([]byte(Maze.MazeJson), &mazeJSON)
-	if err != nil {
-		return nil, err
-	}
-
-	if Maze.MonsterControllerConnected {
-		mazeJSON["player_type"] = "guide"
-	} else {
-		mazeJSON["player_type"] = "monster"
+	if !out.IsGuide {
 		Maze.MonsterControllerConnected = true
-		out.IsGuide = false
 	}
 
-	jsonBytes, err := json.Marshal(mazeJSON)
-	if err != nil {
-		return nil, err
-	}
-
-	err = out.SendMessage("MAZE " + string(jsonBytes))
+	err := out.SetMaze(Maze.MazeJson)
 	if err != nil {
 		return nil, err
 	}
@@ -65,7 +48,6 @@ func (m WebApp) SendMessage(message string) error {
 //	log.Println("Client message: ", clientMessage)
 //
 //	if len(clientMessage) > 17 && clientMessage[:16] == "MonsterDirection" {
-//		fmt.Println("Hello World 1")
 //
 //		err := m.MazeHost.SendMessage(clientMessage)
 //		if err != nil {
@@ -97,9 +79,35 @@ func (m WebApp) SetPositions(JSON string) error {
 }
 
 func (m WebApp) SetMaze(JSON string) error {
-	err := m.SendMessage(fmt.Sprintf("Maze %s", JSON))
+
+	// If no maze has been set yet don't send a message
+	if JSON == "nomaze" {
+		return nil
+	}
+
+	// Add whether this player is a guide or monster to the json
+	var mazeJSON map[string]interface{}
+
+	err := json.Unmarshal([]byte(JSON), &mazeJSON)
 	if err != nil {
 		return err
 	}
+
+	if m.IsGuide {
+		mazeJSON["player_type"] = "guide"
+	} else {
+		mazeJSON["player_type"] = "monster"
+	}
+
+	jsonBytes, err := json.Marshal(mazeJSON)
+	if err != nil {
+		return err
+	}
+
+	err = m.SendMessage("MAZE " + string(jsonBytes))
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
