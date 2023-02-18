@@ -137,9 +137,16 @@ func (m *MazeHost) SetMaze(JSON string) {
 		err := app.SetMaze(JSON)
 		if err != nil {
 			fmt.Printf("Error setting maze: %s", err.Error())
+			err = m.WebApps[i].Disconnected()
+			if err != nil {
+				fmt.Printf("Error disconnecting webapp: %s", err.Error())
+			}
 			m.WebApps = append(m.WebApps[:i-1], m.WebApps[i:]...)
 		}
 	}
+
+	// Wait a short period of time, so the webapps can pick up the maze message without any position messages in the buffer
+	time.Sleep(100 * time.Millisecond)
 }
 
 func (m *MazeHost) ChangeMonsterDirection(message string) error {
