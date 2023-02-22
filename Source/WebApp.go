@@ -14,6 +14,16 @@ type WebApp struct {
 	IsGuide     bool // If not a guide they're a monster controller
 }
 
+type IWebApp interface {
+	SendMessage(message string) error
+	SetPositions(JSON string) error
+	Disconnected() error
+	SetMaze(JSON string) error
+	IsAGuide() bool
+}
+
+//go:generate moq -out IWebApp_mock.go . IWebApp
+
 func CreateWebApp(Connection *websocket.Conn, MessageType int, Maze *MazeHost) (*WebApp, error) {
 	var out = &WebApp{
 		Connection:  Connection,
@@ -110,4 +120,8 @@ func (m WebApp) SetMaze(JSON string) error {
 	}
 
 	return nil
+}
+
+func (m WebApp) IsAGuide() bool {
+	return m.IsGuide
 }

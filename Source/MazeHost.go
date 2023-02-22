@@ -15,7 +15,7 @@ type MazeHost struct {
 	Code                       string
 	MazeJson                   string
 	Positions                  string
-	WebApps                    []*WebApp
+	WebApps                    []IWebApp
 	MonsterControllerConnected bool
 }
 
@@ -28,7 +28,7 @@ func CreateHost(Connection net.Conn, Reader *bufio.Reader, Code string) *MazeHos
 		MonsterControllerConnected: false,
 	}
 
-	go m.HandleMessages()
+	go m.HandleMessages(true)
 
 	return &m
 }
@@ -53,7 +53,7 @@ func (m *MazeHost) _SendMessageLoop(message []byte) error {
 		time.Sleep(sleepTime)
 	}
 
-	return errors.New(fmt.Sprintf("Failed after %s attempts", attempts))
+	return errors.New(fmt.Sprintf("Failed after %d attempts", attempts))
 
 }
 
@@ -71,7 +71,7 @@ func (m *MazeHost) SendMessage(message string) error {
 	return nil
 }
 
-func (m *MazeHost) HandleMessages() {
+func (m *MazeHost) HandleMessages(loop bool) {
 	buffer, err := m.Reader.ReadBytes('\n')
 	if err != nil {
 		// Client disconnected
@@ -86,10 +86,11 @@ func (m *MazeHost) HandleMessages() {
 
 	var clientMessage = string(buffer[:len(buffer)-1])
 
-	log.Println("Host ", m.Code, " message:", clientMessage)
+	//log.Println("Host", m.Code, "message:", clientMessage)
 
 	if len(clientMessage) > 10 && clientMessage[5:9] == "Maze" {
 		//Code := clientMessage[:4]
+		log.Println("Host ", m.Code, " message:", clientMessage)
 		mazeJSON := clientMessage[10:]
 		m.SetMaze(mazeJSON)
 	}
@@ -98,7 +99,9 @@ func (m *MazeHost) HandleMessages() {
 		m.SetWebAppsPositions(clientMessage[15:])
 	}
 
-	m.HandleMessages()
+	if loop {
+		m.HandleMessages(loop)
+	}
 }
 
 func (m *MazeHost) Disconnected() error {
@@ -112,7 +115,7 @@ func (m *MazeHost) Disconnected() error {
 	return nil
 }
 
-func (m *MazeHost) AddWebApp(w *WebApp) {
+func (m *MazeHost) AddWebApp(w IWebApp) {
 	m.WebApps = append(m.WebApps, w)
 }
 
