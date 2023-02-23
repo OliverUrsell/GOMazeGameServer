@@ -112,6 +112,8 @@ func (m *MazeHost) Disconnected() error {
 		return err
 	}
 
+	delete(CodeMazeHostMap, m.Code)
+
 	return nil
 }
 
