@@ -34,6 +34,9 @@ func CreateHost(Connection net.Conn, Reader *bufio.Reader, Code string) *MazeHos
 }
 
 func (m *MazeHost) _SendMessageLoop(message []byte) error {
+	if m == nil {
+		return errors.New("MazeHost no longer exists")
+	}
 	attempts := 0
 	for attempts <= 10 {
 		n, err := m.Connection.Write(message)
@@ -93,6 +96,9 @@ func (m *MazeHost) HandleMessages(loop bool) {
 		log.Println("Host ", m.Code, " message:", clientMessage)
 		mazeJSON := clientMessage[10:]
 		m.SetMaze(mazeJSON)
+	} else {
+		// Send the maze over and over again to keep up with changes
+		m.SendMaze(m.MazeJson)
 	}
 
 	if len(clientMessage) > 13 && clientMessage[5:14] == "Positions" {
@@ -138,6 +144,10 @@ func (m *MazeHost) SetWebAppsPositions(JSON string) {
 
 func (m *MazeHost) SetMaze(JSON string) {
 	m.MazeJson = JSON
+	m.SendMaze(JSON)
+}
+
+func (m *MazeHost) SendMaze(JSON string) {
 	for i, app := range m.WebApps {
 		err := app.SetMaze(JSON)
 		if err != nil {
@@ -146,12 +156,10 @@ func (m *MazeHost) SetMaze(JSON string) {
 			if err != nil {
 				fmt.Printf("Error disconnecting webapp: %s", err.Error())
 			}
-			m.WebApps = append(m.WebApps[:i-1], m.WebApps[i:]...)
+
+			m.WebApps = append(m.WebApps[:i], m.WebApps[i+1:]...)
 		}
 	}
-
-	// Wait a short period of time, so the webapps can pick up the maze message without any position messages in the buffer
-	time.Sleep(100 * time.Millisecond)
 }
 
 func (m *MazeHost) ChangeMonsterDirection(message string) error {
